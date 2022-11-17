@@ -251,6 +251,13 @@ export interface GetPrismaClientConfig {
   activeProvider: string
 
   /**
+   * True when `--engine-path` is passed to `prisma generate`
+   * If enabled, we disregard the generator config engineType.
+   * It means that `--engine-path` binds you to the Custom Engine.
+   */
+  customEnginePath?: string
+
+  /**
    * True when `--data-proxy` is passed to `prisma generate`
    * If enabled, we disregard the generator config engineType.
    * It means that `--data-proxy` binds you to the Data Proxy.
@@ -337,6 +344,7 @@ export function getPrismaClient(config: GetPrismaClientConfig) {
     _activeProvider: string
     _transactionId = 1
     _rejectOnNotFound?: InstanceRejectOnNotFound
+    _customEnginePath?: string
     _dataProxy: boolean
     _extensions: Extension[]
 
@@ -351,6 +359,7 @@ export function getPrismaClient(config: GetPrismaClientConfig) {
       this._clientVersion = config.clientVersion ?? clientVersion
       this._activeProvider = config.activeProvider
       this._dataProxy = config.dataProxy
+      this._customEnginePath = config.customEnginePath
       this._tracingConfig = getTracingConfig(this._previewFeatures)
       this._clientEngineType = getClientEngineType(config.generator!)
       const envPaths = {
@@ -414,7 +423,7 @@ export function getPrismaClient(config: GetPrismaClientConfig) {
 
         this._baseDmmf = new BaseDMMFHelper(config.document)
 
-        if (this._dataProxy) {
+        if (this._dataProxy || this._customEnginePath) {
           // the data proxy can't get the dmmf from the engine
           // so the generated client always has the full dmmf
           const rawDmmf = config.document as DMMF.Document
@@ -453,7 +462,14 @@ export function getPrismaClient(config: GetPrismaClientConfig) {
         }
 
         debug('clientVersion', config.clientVersion)
-        debug('clientEngineType', this._dataProxy ? 'dataproxy' : this._clientEngineType)
+        debug(
+          'clientEngineType',
+          this._customEnginePath
+            ? `custom path: ${this._customEnginePath}`
+            : this._dataProxy
+            ? 'dataproxy'
+            : this._clientEngineType,
+        )
 
         if (this._dataProxy) {
           const runtime = NODE_CLIENT ? 'Node.js' : 'edge'
@@ -489,6 +505,10 @@ export function getPrismaClient(config: GetPrismaClientConfig) {
     }
 
     getEngine(): Engine {
+      if (this._customEnginePath) {
+        const { Engine } = require(this._customEnginePath)
+        return new Engine(this._engineConfig)
+      }
       if (this._dataProxy === true) {
         return new DataProxyEngine(this._engineConfig)
       } else if (this._clientEngineType === ClientEngineType.Library) {
@@ -575,7 +595,7 @@ export function getPrismaClient(config: GetPrismaClientConfig) {
         e.clientVersion = this._clientVersion
         throw e
       } finally {
-        if (!this._dataProxy) {
+        if (!this._dataProxy && !this._customEnginePath) {
           this._dmmf = undefined
         }
       }

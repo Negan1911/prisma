@@ -103,6 +103,7 @@ ${chalk.bold('Examples')}
       '--watch': Boolean,
       '--schema': String,
       '--data-proxy': Boolean,
+      '--engine-path': String,
       // Only used for checkpoint information
       '--postinstall': String,
       '--telemetry-information': String,
@@ -138,6 +139,7 @@ ${chalk.bold('Examples')}
         printDownloadProgress: !watchMode,
         version: enginesVersion,
         cliVersion: pkg.version,
+        customEnginePath: args['--engine-path'] || process.env.PRISMA_CUSTOM_ENGINE_PATH,
         dataProxy: !!args['--data-proxy'] || !!process.env.PRISMA_GENERATE_DATAPROXY,
       })
 
@@ -288,6 +290,7 @@ Please run \`${getCommandWithExecutor('prisma generate')}\` to see the errors.`)
               printDownloadProgress: !watchMode,
               version: enginesVersion,
               cliVersion: pkg.version,
+              customEnginePath: args['--engine-path'] || process.env.PRISMA_CUSTOM_ENGINE_PATH,
               dataProxy: !!args['--data-proxy'] || !!process.env.PRISMA_GENERATE_DATAPROXY,
             })
 
